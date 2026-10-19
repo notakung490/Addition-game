@@ -7,6 +7,7 @@
   const MEDIAPIPE_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}`;
   const MODEL_URL =
     'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+  const VIDEO_SIZE = { width: { ideal: 640 }, height: { ideal: 480 } };
 
   class HandTracker {
     // onFrame(hand, timeMs) is called for every camera frame; hand is null when no hand is visible,
@@ -22,17 +23,16 @@
     }
 
     // onStatus('camera' | 'model') reports progress for the loading screen.
-    async start(onStatus = () => {}) {
+    // deviceId picks a specific camera; without it the browser's default camera is used.
+    async start(onStatus = () => {}, deviceId = null) {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw Object.assign(new Error('getUserMedia unavailable'), { name: 'NoCameraSupport' });
       }
       onStatus('camera');
-      const camera = navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false })
-        .then((stream) => {
-          onStatus('model');
-          return stream;
-        });
+      const camera = this.openCamera(deviceId).then((stream) => {
+        onStatus('model');
+        return stream;
+      });
       // Download the model while the camera permission prompt is open. If the camera
       // is refused the download carries on, so a retry is quick.
       if (!this.modelPromise) {
@@ -48,11 +48,61 @@
         this.stop();
         throw err;
       }
+      await this.attachStream();
+      this.running = true;
+      this.loop();
+    }
+
+    // Opens the given camera, or the default one when it is not given or no longer plugged in.
+    async openCamera(deviceId) {
+      if (deviceId) {
+        try {
+          return await this.getStream({ deviceId: { exact: deviceId } });
+        } catch (err) {
+          if (err.name !== 'OverconstrainedError' && err.name !== 'NotFoundError') throw err;
+        }
+      }
+      return this.getStream({ facingMode: 'user' });
+    }
+
+    getStream(constraints) {
+      return navigator.mediaDevices.getUserMedia({ video: { ...VIDEO_SIZE, ...constraints }, audio: false });
+    }
+
+    async attachStream() {
       this.video.srcObject = this.stream;
       await this.video.play();
-      this.running = true;
       this.lastVideoTime = -1;
-      this.loop();
+    }
+
+    // Cameras on this device as { deviceId, label }. Labels are only filled in
+    // once the player has allowed camera access.
+    async listCameras() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter((d) => d.kind === 'videoinput').map(({ deviceId, label }) => ({ deviceId, label }));
+    }
+
+    currentCameraId() {
+      const track = this.stream && this.stream.getVideoTracks()[0];
+      return (track && track.getSettings().deviceId) || null;
+    }
+
+    // Swaps to another camera while the game keeps running. If that camera
+    // can't be opened, the previous one comes back and the error is rethrown.
+    async switchCamera(deviceId) {
+      if (!this.running) return;
+      const previous = this.currentCameraId();
+      this.stream.getTracks().forEach((track) => track.stop());
+      let error = null;
+      try {
+        this.stream = await this.getStream({ deviceId: { exact: deviceId } });
+      } catch (err) {
+        error = err;
+        this.stream = await this.openCamera(previous);
+      }
+      if (!this.running) return this.stop(); // stopped while the new camera was opening
+      await this.attachStream();
+      if (error) throw error;
     }
 
     async loadModel() {

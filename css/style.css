@@ -325,7 +325,7 @@ body[data-input='mouse'] .target kbd {
 }
 
 .ready-target {
-  --t: clamp(140px, 30vmin, 240px);
+  --t: clamp(100px, min(30vmin, 26vh), 240px);
 }
 
 .ready-target .num {
@@ -343,10 +343,11 @@ body[data-input='mouse'] .target kbd {
 
 .cam {
   grid-area: cam;
+  position: relative;
   align-self: end;
   justify-self: center;
   margin: 0;
-  width: clamp(150px, 20vw, 240px);
+  width: clamp(110px, min(20vw, 30vh), 240px);
   text-align: center;
 }
 
@@ -385,6 +386,44 @@ body[data-input='mouse'] .target kbd {
 .cam figcaption[data-tone='ready'] {
   background: var(--accent);
   color: var(--accent-ink);
+}
+
+/* sits on top of the preview so it takes no extra room */
+.cam-picker {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+}
+
+.cam-picker select {
+  width: 100%;
+  padding: 3px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(15, 23, 42, 0.8);
+  color: var(--text);
+  font: 12px var(--font);
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.cam-picker option {
+  background: #fff;
+  color: #0f172a;
+}
+
+.cam-error {
+  position: absolute;
+  top: 36px;
+  left: 6px;
+  right: 6px;
+  margin: 0;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(127, 29, 29, 0.9);
+  color: #fff;
+  font-size: 12px;
 }
 
 .corner-buttons {
@@ -1023,6 +1062,15 @@ body[data-fire='thumb'] .crosshair .dwell {
 
   .cam {
     width: clamp(120px, 34vw, 180px);
+  }
+}
+
+/* phones held sideways: hint beside the start target instead of under it */
+@media (max-height: 480px) {
+  .ready {
+    grid-auto-flow: column;
+    align-items: center;
+    text-align: left;
   }
 }
 

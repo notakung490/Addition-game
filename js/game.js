@@ -10,6 +10,7 @@
   const NEXT_DELAY_OK_MS = 1200;
   const NEXT_DELAY_WRONG_MS = 2400;
   const BEST_KEY = 'addition-gun-best';
+  const CAMERA_KEY = 'addition-gun-camera';
 
   const { makeQuestionSet } = window.MathQuestions;
   const G = window.Gesture;
@@ -36,6 +37,9 @@
     video: $('#cam-video'),
     canvas: $('#cam-canvas'),
     camStatus: $('#cam-status'),
+    camPicker: $('#cam-picker'),
+    camSelect: $('#cam-select'),
+    camError: $('#cam-error'),
     loadingText: $('#loading-text'),
     loadingError: $('#loading-error'),
     loadingErrorText: $('#loading-error-text'),
@@ -113,15 +117,89 @@
     try {
       await tracker.start((step) => {
         if (step === 'model') ui.loadingText.textContent = 'กำลังโหลดตัวตรวจจับมือ (ครั้งแรกอาจใช้เวลาสักครู่)...';
-      });
+      }, savedCamera().deviceId);
     } catch (err) {
       console.error(err);
       if (state.phase === 'loading') showLoadingError(err);
       return;
     }
     if (state.phase !== 'loading') return tracker.stop(); // player left while it was loading
+    await restoreSavedCamera();
+    if (state.phase !== 'loading') return tracker.stop();
     sizePreviewCanvas();
+    fillCameraPicker();
     setPhase('ready');
+  }
+
+  // ---------- camera picker ----------
+
+  // Laptops paired with a phone (Continuity Camera, Phone Link) often make the
+  // phone the default camera, so let the player pick and remember the choice.
+  async function fillCameraPicker() {
+    let cameras = [];
+    try {
+      cameras = await tracker.listCameras();
+    } catch (err) {
+      console.warn(err);
+    }
+    const current = tracker.currentCameraId();
+    ui.camSelect.replaceChildren(
+      ...cameras.map((cam, i) => {
+        const option = new Option(cameraName(cam.label, i), cam.deviceId, false, cam.deviceId === current);
+        option.dataset.label = cam.label;
+        return option;
+      })
+    );
+    ui.camPicker.hidden = cameras.length < 2;
+  }
+
+  // Camera ids can change between visits (e.g. "allow this time" permissions),
+  // so if the saved id didn't open the saved camera, find it again by name.
+  async function restoreSavedCamera() {
+    const saved = savedCamera();
+    if (!saved.label) return;
+    try {
+      const cameras = await tracker.listCameras();
+      const current = cameras.find((cam) => cam.deviceId === tracker.currentCameraId());
+      if (current && current.label === saved.label) return;
+      const match = cameras.find((cam) => cam.label === saved.label);
+      if (match) await tracker.switchCamera(match.deviceId);
+    } catch (err) {
+      console.warn('Could not restore the saved camera', err);
+    }
+  }
+
+  function savedCamera() {
+    try {
+      return JSON.parse(loadSetting(CAMERA_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function cameraName(label, i) {
+    const name = label.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, '');
+    return name ? `กล้อง: ${name}` : `กล้องที่ ${i + 1}`;
+  }
+
+  async function changeCamera() {
+    const deviceId = ui.camSelect.value;
+    ui.camSelect.disabled = true;
+    ui.camError.hidden = true;
+    try {
+      await tracker.switchCamera(deviceId);
+      const label = ui.camSelect.selectedOptions[0].dataset.label;
+      saveSetting(CAMERA_KEY, JSON.stringify({ deviceId, label }));
+    } catch (err) {
+      console.error(err);
+      ui.camError.textContent = 'เปิดกล้องนี้ไม่ได้ ลองเลือกกล้องอื่น';
+      ui.camError.hidden = false;
+    }
+    ui.camSelect.disabled = false;
+    ui.camSelect.blur(); // so the 1-4 answer keys don't scroll the list
+    resetAim();
+    sizePreviewCanvas();
+    fillCameraPicker();
   }
 
   function showLoadingError(err) {
@@ -474,18 +552,26 @@
   // ---------- storage ----------
 
   function bestScore() {
-    try {
-      return Number(localStorage.getItem(BEST_KEY)) || 0;
-    } catch (e) {
-      return 0;
-    }
+    return Number(loadSetting(BEST_KEY)) || 0;
   }
 
   function saveBest(score) {
+    saveSetting(BEST_KEY, String(score));
+  }
+
+  function loadSetting(key) {
     try {
-      localStorage.setItem(BEST_KEY, String(score));
+      return localStorage.getItem(key);
     } catch (e) {
-      /* private mode: best score just isn't remembered */
+      return null;
+    }
+  }
+
+  function saveSetting(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      /* private mode: the setting just isn't remembered */
     }
   }
 
@@ -515,6 +601,13 @@
     });
   });
 
+  ui.camSelect.addEventListener('change', changeCamera);
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener('devicechange', () => {
+      if (tracker.running) fillCameraPicker();
+    });
+  }
+
   ui.btnMute.addEventListener('click', toggleMute);
   function toggleMute() {
     ui.btnMute.classList.toggle('muted', Sound.toggleMute());
@@ -525,7 +618,7 @@
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.target.closest('input, textarea') || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
     const slot = ['1', '2', '3', '4'].indexOf(e.key);
     if (slot >= 0 && state.phase === 'playing') {
       const r = ui.answers[slot].getBoundingClientRect();
