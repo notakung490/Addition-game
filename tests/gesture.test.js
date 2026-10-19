@@ -53,6 +53,18 @@ test('trigger survives a short tracking dropout but resets after losing the gun'
   assert.equal(trig.update({ isGun: true, thumbOpen: 0.2 }, 1533), false);
 });
 
+test('trigger remembers when the thumb was last fully up, so a slow press aims from before it', () => {
+  const trig = new G.TriggerDetector();
+  // Thumb raised high: the press starts while it is still above the cock threshold.
+  trig.update({ isGun: true, thumbOpen: 1.0 }, 0);
+  trig.update({ isGun: true, thumbOpen: 1.02 }, 100); // tracking jitter
+  trig.update({ isGun: true, thumbOpen: 0.85 }, 200); // press begins
+  trig.update({ isGun: true, thumbOpen: 0.6 }, 300);
+  trig.update({ isGun: true, thumbOpen: 0.45 }, 400);
+  assert.equal(trig.update({ isGun: true, thumbOpen: 0.3 }, 500), true);
+  assert.equal(trig.lastCockedAt, 100);
+});
+
 test('trigger enforces a minimum gap between shots', () => {
   const trig = new G.TriggerDetector();
   trig.update({ isGun: true, thumbOpen: 0.7 }, 0);

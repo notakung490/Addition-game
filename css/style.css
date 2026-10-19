@@ -1,6 +1,5 @@
 :root {
-  --bg: #0b1026;
-  --bg-2: #24165c;
+  --bg: #03040c;
   --panel: rgba(17, 24, 56, 0.92);
   --line: rgba(255, 255, 255, 0.14);
   --text: #f8fafc;
@@ -26,10 +25,12 @@ body {
 
 body {
   overflow: hidden;
+  /* nebula glow over deep space */
   background:
-    radial-gradient(1200px 700px at 50% 45%, var(--bg-2), transparent 70%),
-    radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.12), transparent 40%),
-    var(--bg);
+    radial-gradient(60vmax 40vmax at 15% 20%, rgba(124, 58, 237, 0.3), transparent 70%),
+    radial-gradient(50vmax 35vmax at 88% 85%, rgba(14, 165, 233, 0.2), transparent 70%),
+    radial-gradient(40vmax 28vmax at 72% 12%, rgba(236, 72, 153, 0.14), transparent 70%),
+    radial-gradient(ellipse at 50% 50%, #0d1236, var(--bg) 75%);
   color: var(--text);
   font-family: var(--font);
   -webkit-tap-highlight-color: transparent;
@@ -44,6 +45,112 @@ button {
 
 [hidden] {
   display: none !important;
+}
+
+/* ---------- space background ---------- */
+
+.space {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  border-radius: 50%;
+}
+
+.stars-mid {
+  width: 2px;
+  height: 2px;
+  animation: twinkle 4.5s ease-in-out infinite alternate;
+}
+
+.stars-near {
+  width: 3px;
+  height: 3px;
+  animation: twinkle 3s ease-in-out 1.2s infinite alternate;
+}
+
+.planet {
+  position: absolute;
+  top: 50%;
+  right: -9vmin;
+  width: 30vmin;
+  height: 30vmin;
+  transform: translateY(-50%);
+}
+
+.planet-body {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.4), transparent 38%),
+    repeating-linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0 7%, transparent 7% 15%),
+    radial-gradient(circle at 35% 35%, #f9a8d4, #c026d3 45%, #581c87 78%, #2e1065);
+  box-shadow:
+    inset -3vmin -2vmin 6vmin rgba(10, 0, 30, 0.8),
+    0 0 7vmin rgba(192, 38, 211, 0.35);
+}
+
+/* The ring is drawn twice: the full ellipse behind the planet and only its
+   lower half in front, so it looks like it wraps around. */
+.ring {
+  position: absolute;
+  left: -34%;
+  right: -34%;
+  top: 41%;
+  height: 18%;
+  border-radius: 50%;
+  border: 1.3vmin solid rgba(253, 230, 138, 0.6);
+  transform: rotate(-16deg);
+}
+
+.ring-front {
+  clip-path: inset(50% 0 0 0);
+}
+
+.moon {
+  position: absolute;
+  top: 50%;
+  left: -2vmin;
+  width: 11vmin;
+  height: 11vmin;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 62% 38%, rgba(0, 0, 0, 0.22) 0 9%, transparent 10%),
+    radial-gradient(circle at 38% 66%, rgba(0, 0, 0, 0.18) 0 13%, transparent 14%),
+    radial-gradient(circle at 70% 72%, rgba(0, 0, 0, 0.15) 0 6%, transparent 7%),
+    radial-gradient(circle at 35% 30%, #f1f5f9, #94a3b8 60%, #334155);
+  box-shadow: inset -1.5vmin -1vmin 3vmin rgba(2, 6, 23, 0.7), 0 0 4vmin rgba(203, 213, 225, 0.2);
+}
+
+.shooting-star {
+  position: absolute;
+  width: 20vmin;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #fff);
+  opacity: 0;
+}
+
+.shooting-star.one {
+  top: 8%;
+  left: 78%;
+  animation: shoot 11s linear 2s infinite;
+}
+
+.shooting-star.two {
+  top: 30%;
+  left: 55%;
+  animation: shoot 17s linear 9s infinite;
 }
 
 /* ---------- board ---------- */
@@ -1018,6 +1125,28 @@ body[data-fire='thumb'] .crosshair .dwell {
   }
 }
 
+@keyframes twinkle {
+  to {
+    opacity: 0.3;
+  }
+}
+
+/* travels down-left, head first, then stays hidden for the rest of the cycle */
+@keyframes shoot {
+  0% {
+    transform: translate(0, 0) rotate(156deg);
+    opacity: 0;
+  }
+  1% {
+    opacity: 1;
+  }
+  7%,
+  100% {
+    transform: translate(-45vw, 20vw) rotate(156deg);
+    opacity: 0;
+  }
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -1062,6 +1191,21 @@ body[data-fire='thumb'] .crosshair .dwell {
 
   .cam {
     width: clamp(120px, 34vw, 180px);
+  }
+
+  .planet {
+    top: auto;
+    bottom: -6vmin;
+    right: -10vmin;
+    width: 34vmin;
+    height: 34vmin;
+    transform: none;
+  }
+
+  .moon {
+    top: auto;
+    bottom: 4vmin;
+    left: -3vmin;
   }
 }
 

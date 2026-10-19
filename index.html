@@ -38,6 +38,21 @@
       </defs>
     </svg>
 
+    <!-- Space background -->
+    <div class="space" aria-hidden="true">
+      <div class="stars stars-far"></div>
+      <div class="stars stars-mid"></div>
+      <div class="stars stars-near"></div>
+      <div class="planet">
+        <div class="ring ring-back"></div>
+        <div class="planet-body"></div>
+        <div class="ring ring-front"></div>
+      </div>
+      <div class="moon"></div>
+      <div class="shooting-star one"></div>
+      <div class="shooting-star two"></div>
+    </div>
+
     <!-- Game board -->
     <main id="arena" class="arena" aria-live="polite">
       <header class="hud">
@@ -179,6 +194,7 @@
     <div class="fx" id="fx" aria-hidden="true"></div>
     <pre class="debug" id="debug" hidden></pre>
 
+    <script src="js/space.js"></script>
     <script src="js/questions.js"></script>
     <script src="js/gesture.js"></script>
     <script src="js/sound.js"></script>

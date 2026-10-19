@@ -35,6 +35,8 @@
     cockThreshold: 0.5, // thumbOpen above this = thumb up, hammer cocked
     fireThreshold: 0.38, // thumbOpen below this (after cocking) = fire
     minShotGapMs: 350, // no machine-gunning
+    pullSlack: 0.08, // thumb this far below its peak = the press has started
+    peakDecayPerSec: 0.5, // lets the remembered peak forget tracking spikes
     gunGraceMs: 250, // keep the trigger state through short tracking dropouts
   };
 
@@ -108,6 +110,9 @@
       this.state = 'idle';
       this.lastGunAt = -Infinity;
       this.lastShotAt = -Infinity;
+      this.lastCockedAt = -Infinity; // last frame the thumb was fully up, i.e. just before the press began
+      this.lastFrameAt = 0;
+      this.peak = 0;
     }
 
     // info: result of analyzeHand, or null when no hand. Returns true on the frame a shot fires.
@@ -118,7 +123,13 @@
         return false;
       }
       this.lastGunAt = t;
+      const dt = (t - this.lastFrameAt) / 1000;
+      this.lastFrameAt = t;
       if (this.state === 'cocked') {
+        // Relative to this player's own thumb-up level, so a press is caught as
+        // soon as it starts even when the thumb was raised high.
+        this.peak = Math.max(info.thumbOpen, this.peak - c.peakDecayPerSec * dt);
+        if (info.thumbOpen >= this.peak - c.pullSlack) this.lastCockedAt = t;
         if (info.thumbOpen < c.fireThreshold && t - this.lastShotAt >= c.minShotGapMs) {
           this.state = 'aiming';
           this.lastShotAt = t;
@@ -127,6 +138,10 @@
         return false;
       }
       this.state = info.thumbOpen > c.cockThreshold ? 'cocked' : 'aiming';
+      if (this.state === 'cocked') {
+        this.peak = info.thumbOpen;
+        this.lastCockedAt = t;
+      }
       return false;
     }
   }

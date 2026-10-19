@@ -3,8 +3,10 @@
   'use strict';
 
   const TOTAL_QUESTIONS = 10;
-  const AIM_REGION = { x0: 0.15, x1: 0.85, y0: 0.12, y1: 0.78 }; // part of the camera view that covers the screen
-  const SHOT_LOOKBACK_MS = 120; // aim from just before the thumb moved
+  // Part of the camera view that covers the screen. The top is kept well below the
+  // top of the frame so aiming at the top row doesn't mean raising the hand to eye level.
+  const AIM_REGION = { x0: 0.15, x1: 0.85, y0: 0.24, y1: 0.8 };
+  const SHOT_LOOKBACK_MS = 120; // aim from at least this long before the shot
   const DWELL_MS = 1500;
   const HIT_SLOP = 0.15; // targets are 15% more forgiving than they look
   const NEXT_DELAY_OK_MS = 1200;
@@ -79,7 +81,7 @@
   const dwell = new G.DwellDetector(DWELL_MS);
   const smoothX = new G.OneEuroFilter(1.2, 12);
   const smoothY = new G.OneEuroFilter(1.2, 12);
-  const aimHistory = new G.AimHistory(500);
+  const aimHistory = new G.AimHistory(1000);
   let hovered = null;
   let camStatusKey = '';
 
@@ -415,7 +417,8 @@
     let shot = null;
     if (state.fireMode === 'thumb') {
       if (trigger.update(info, t)) {
-        const p = aimHistory.at(t - SHOT_LOOKBACK_MS) || { x, y };
+        // Aim from before the thumb started moving: pressing it down drags the hand.
+        const p = aimHistory.at(Math.min(trigger.lastCockedAt, t - SHOT_LOOKBACK_MS)) || { x, y };
         shot = { x: p.x, y: p.y, target: undefined };
       } else if (!wasCocked && trigger.state === 'cocked') {
         Sound.cock();
