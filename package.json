@@ -1,0 +1,11 @@
+{
+  "name": "addition-game",
+  "version": "1.0.0",
+  "description": "เกมบวกเลข 2 หลัก ใช้มือทำท่าปืนเล็งและยิงคำตอบผ่านกล้อง",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test \"tests/*.test.js\""
+  },
+  "license": "MIT"
+}

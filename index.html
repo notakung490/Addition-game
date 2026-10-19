@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>ยิงเลขบวก</title>
+    <meta name="description" content="เกมบวกเลข 2 หลัก ใช้มือทำท่าปืนเล็งและยิงคำตอบผ่านกล้อง" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body data-phase="menu" data-input="hand">
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-gun" viewBox="0 0 100 64">
+          <rect x="14" y="28" width="30" height="26" rx="9" />
+          <rect x="36" y="28" width="44" height="11" rx="5.5" />
+          <rect x="21" y="6" width="11" height="28" rx="5.5" />
+        </symbol>
+        <symbol id="i-aim" viewBox="0 0 100 64">
+          <rect x="4" y="28" width="26" height="24" rx="8" />
+          <rect x="24" y="28" width="34" height="10" rx="5" />
+          <rect x="10" y="9" width="10" height="24" rx="5" />
+          <path d="M62 33h12" stroke="currentColor" stroke-width="3" stroke-dasharray="3 3" fill="none" />
+          <circle cx="86" cy="33" r="11" fill="none" stroke="currentColor" stroke-width="3" />
+          <circle cx="86" cy="33" r="4" />
+        </symbol>
+        <symbol id="i-fire" viewBox="0 0 100 64">
+          <rect x="10" y="28" width="30" height="26" rx="9" />
+          <rect x="32" y="28" width="40" height="11" rx="5.5" />
+          <rect x="16" y="17" width="30" height="11" rx="5.5" />
+          <path d="M80 24l8-7M82 33.5h12M80 43l8 7" stroke="currentColor" stroke-width="4" stroke-linecap="round" fill="none" />
+        </symbol>
+        <symbol id="i-star" viewBox="0 0 24 24">
+          <path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <!-- Game board -->
+    <main id="arena" class="arena" aria-live="polite">
+      <header class="hud">
+        <div class="hud-row">
+          <span class="hud-item"><small>ข้อ</small> <b id="hud-index">1/10</b></span>
+          <span class="hud-item"><small>คะแนน</small> <b id="hud-score">0</b></span>
+          <span class="hud-item streak" id="hud-streak-wrap"><small>ต่อเนื่อง</small> <b id="hud-streak">0</b></span>
+        </div>
+        <ol class="dots" id="dots" aria-hidden="true"></ol>
+      </header>
+
+      <button class="target answer" data-slot="0" style="grid-area: t0"><span class="num"></span><kbd>1</kbd></button>
+      <button class="target answer" data-slot="1" style="grid-area: t1"><span class="num"></span><kbd>2</kbd></button>
+      <button class="target answer" data-slot="2" style="grid-area: t2"><span class="num"></span><kbd>3</kbd></button>
+      <button class="target answer" data-slot="3" style="grid-area: t3"><span class="num"></span><kbd>4</kbd></button>
+
+      <div class="center">
+        <div class="question" id="question">
+          <span id="qa">47</span><span class="op">+</span><span id="qb">38</span><span class="op">=</span><span class="q">?</span>
+        </div>
+        <div class="ready" id="ready">
+          <button class="target ready-target" id="ready-target"><span class="num">เริ่ม</span></button>
+          <p id="ready-hint">ทำมือเป็นรูปปืน เล็งที่เป้า แล้วพับนิ้วโป้งลงเพื่อยิง</p>
+        </div>
+        <div class="toast" id="toast" role="status"></div>
+      </div>
+
+      <figure class="cam" id="cam">
+        <div class="cam-frame">
+          <video id="cam-video" playsinline muted></video>
+          <canvas id="cam-canvas"></canvas>
+        </div>
+        <figcaption id="cam-status" data-tone="none">กำลังเปิดกล้อง...</figcaption>
+      </figure>
+
+      <div class="corner-buttons">
+        <button class="icon-btn" id="btn-mute" aria-label="ปิด/เปิดเสียง" title="ปิด/เปิดเสียง (M)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 9v6h4l5 4V5L8 9H4z" />
+            <path class="waves" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" />
+            <path class="cross" d="M16 9l6 6M22 9l-6 6" />
+          </svg>
+        </button>
+        <button class="icon-btn text" id="btn-quit" title="กลับหน้าแรก">ออก</button>
+      </div>
+    </main>
+
+    <!-- Start screen -->
+    <section class="screen" id="menu" aria-labelledby="title">
+      <div class="panel menu-panel">
+        <p class="eyebrow">เกมบวกเลข 2 หลัก</p>
+        <h1 id="title">ยิงเลขบวก</h1>
+        <p class="lead">ทำมือเป็นรูปปืน เล็งไปที่คำตอบที่ถูก แล้วยิงให้โดน! มีทั้งหมด 10 ข้อ ข้อละ 4 ตัวเลือก</p>
+
+        <ol class="steps">
+          <li>
+            <svg class="step-icon"><use href="#i-gun" /></svg>
+            <b>1. ทำท่าปืน</b>
+            <span>ชูนิ้วชี้ ยกนิ้วโป้งขึ้น กำนิ้วที่เหลือ</span>
+          </li>
+          <li>
+            <svg class="step-icon"><use href="#i-aim" /></svg>
+            <b>2. เล็ง</b>
+            <span>ขยับปลายนิ้วชี้ไปที่เป้าคำตอบ</span>
+          </li>
+          <li>
+            <svg class="step-icon"><use href="#i-fire" /></svg>
+            <b>3. ยิง</b>
+            <span class="fire-thumb">พับนิ้วโป้งลงเร็วๆ ปัง!</span>
+            <span class="fire-dwell">เล็งค้างไว้ 1.5 วินาที</span>
+          </li>
+        </ol>
+
+        <fieldset class="modes">
+          <legend>วิธียิง</legend>
+          <label><input type="radio" name="fire-mode" value="thumb" checked /> <span>พับนิ้วโป้ง <small>(เหมือนปืนจริง)</small></span></label>
+          <label><input type="radio" name="fire-mode" value="dwell" /> <span>เล็งค้างไว้ <small>(ง่ายกว่า)</small></span></label>
+        </fieldset>
+
+        <div class="actions">
+          <button class="btn primary" id="btn-start-hand">เริ่มเล่น (เปิดกล้อง)</button>
+          <button class="btn ghost" id="btn-start-mouse">เล่นด้วยเมาส์ / แตะจอ</button>
+        </div>
+        <p class="fine">ภาพจากกล้องประมวลผลในเครื่องนี้เท่านั้น ไม่มีการส่งออกไปที่ไหน <span id="best-line"></span></p>
+      </div>
+    </section>
+
+    <!-- Loading / camera errors -->
+    <section class="screen" id="loading">
+      <div class="panel loading-panel">
+        <div class="spinner" aria-hidden="true"></div>
+        <p id="loading-text">กำลังเตรียมกล้อง...</p>
+        <div class="loading-error" id="loading-error">
+          <p id="loading-error-text"></p>
+          <div class="actions">
+            <button class="btn primary" id="btn-retry">ลองอีกครั้ง</button>
+            <button class="btn ghost" id="btn-fallback-mouse">เล่นด้วยเมาส์แทน</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section class="screen" id="result" aria-labelledby="result-title">
+      <div class="panel result-panel">
+        <h2 id="result-title">จบเกม!</h2>
+        <div class="stars" id="stars">
+          <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+        </div>
+        <p class="result-msg" id="result-msg"></p>
+        <dl class="stats">
+          <div><dt>ตอบถูก</dt><dd id="r-correct">0/10</dd></div>
+          <div><dt>คะแนน</dt><dd id="r-score">0</dd></div>
+          <div><dt>ต่อเนื่องสูงสุด</dt><dd id="r-streak">0</dd></div>
+          <div><dt>เวลา</dt><dd id="r-time">0:00</dd></div>
+        </dl>
+        <p class="new-best" id="r-best">สถิติใหม่!</p>
+        <div class="actions">
+          <button class="btn primary" id="btn-again" data-shootable>เล่นอีกครั้ง</button>
+          <button class="btn ghost" id="btn-home" data-shootable>หน้าแรก</button>
+        </div>
+        <p class="fine hand-only">ยิงที่ปุ่มได้เลย</p>
+      </div>
+    </section>
+
+    <!-- Hand crosshair and effects -->
+    <div class="crosshair" id="crosshair" aria-hidden="true">
+      <svg viewBox="0 0 80 80">
+        <circle class="dwell" id="dwell-ring" cx="40" cy="40" r="36" pathLength="100" />
+        <circle class="ring" cx="40" cy="40" r="22" />
+        <path class="ticks" d="M40 6v16M40 58v16M6 40h16M58 40h16" />
+        <circle class="dot" cx="40" cy="40" r="3.5" />
+      </svg>
+    </div>
+    <div class="fx" id="fx" aria-hidden="true"></div>
+    <pre class="debug" id="debug" hidden></pre>
+
+    <script src="js/questions.js"></script>
+    <script src="js/gesture.js"></script>
+    <script src="js/sound.js"></script>
+    <script src="js/hand-tracker.js"></script>
+    <script src="js/game.js"></script>
+  </body>
+</html>
