@@ -959,7 +959,6 @@ body[data-input='mouse'] .hand-only {
   transform: scale(1.15);
 }
 
-.crosshair .ring,
 .crosshair .ticks {
   fill: none;
   stroke: currentColor;
