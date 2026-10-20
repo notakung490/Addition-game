@@ -6,6 +6,12 @@
   // Part of the camera view that covers the screen. The top is kept well below the
   // top of the frame so aiming at the top row doesn't mean raising the hand to eye level.
   const AIM_REGION = { x0: 0.15, x1: 0.85, y0: 0.24, y1: 0.8 };
+  // The aim area also moves toward the side of the hand in use (in camera-width
+  // units), where that hand naturally rests, so the far-side targets don't need a
+  // reach across the body. Without it the bottom target opposite the hand was
+  // the hardest one to hit.
+  const HAND_SHIFT = 0.1;
+  const HAND_SHIFT_EASE_MS = 300;
   const SHOT_LOOKBACK_MS = 120; // aim from at least this long before the shot
   const DWELL_MS = 1500;
   const HIT_SLOP = 0.15; // targets are 15% more forgiving than they look
@@ -82,6 +88,9 @@
   const smoothX = new G.OneEuroFilter(1.2, 12);
   const smoothY = new G.OneEuroFilter(1.2, 12);
   const aimHistory = new G.AimHistory(1000);
+  const handSide = new G.HandSide();
+  let regionShift = 0;
+  let lastHandAt = 0;
   let hovered = null;
   let camStatusKey = '';
 
@@ -384,6 +393,8 @@
     smoothY.reset();
     aimHistory.clear();
     trigger.reset();
+    handSide.reset();
+    regionShift = 0;
     dwell.reset();
     setHover(null);
     ui.crosshair.className = 'crosshair';
@@ -406,7 +417,12 @@
     }
 
     const info = G.analyzeHand(hand.world && hand.world.length ? hand.world : hand.landmarks);
-    const aim = G.mapAim(hand.landmarks[8], AIM_REGION);
+    const side = handSide.update(G.playerHand(hand.handedness), t);
+    const targetShift = side === 'right' ? HAND_SHIFT : side === 'left' ? -HAND_SHIFT : 0;
+    regionShift += (targetShift - regionShift) * Math.min(1, (t - lastHandAt) / HAND_SHIFT_EASE_MS);
+    lastHandAt = t;
+    const region = { ...AIM_REGION, x0: AIM_REGION.x0 + regionShift, x1: AIM_REGION.x1 + regionShift };
+    const aim = G.mapAim(hand.landmarks[8], region);
     const x = smoothX.filter(aim.x, t) * window.innerWidth;
     const y = smoothY.filter(aim.y, t) * window.innerHeight;
     aimHistory.push(t, x, y);
@@ -440,7 +456,7 @@
     else if (trigger.state === 'cocked') setCamStatus('ready', 'พร้อมยิง! พับนิ้วโป้งลง');
     else setCamStatus('pose', 'ยกนิ้วโป้งขึ้นเพื่อง้างปืน');
 
-    updateDebug(info);
+    updateDebug(info, side);
     if (shot) shoot(shot.x, shot.y, shot.target);
   }
 
@@ -495,10 +511,10 @@
     });
   }
 
-  function updateDebug(info) {
+  function updateDebug(info, side) {
     if (ui.debug.hidden) return;
     ui.debug.textContent = info
-      ? `gun        ${info.isGun}\nindexBend  ${info.indexBend.toFixed(0)}°\nthumbOpen  ${info.thumbOpen.toFixed(2)}  (cock > ${G.CONFIG.cockThreshold}, fire < ${G.CONFIG.fireThreshold})\ntrigger    ${trigger.state}`
+      ? `gun        ${info.isGun}\nindexBend  ${info.indexBend.toFixed(0)}°\nthumbOpen  ${info.thumbOpen.toFixed(2)}  (cock > ${G.CONFIG.cockThreshold}, fire < ${G.CONFIG.fireThreshold})\ntrigger    ${trigger.state}\nhand       ${side || '?'}  (aim shift ${regionShift >= 0 ? '+' : ''}${regionShift.toFixed(2)})`
       : 'no hand';
   }
 

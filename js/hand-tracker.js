@@ -11,7 +11,8 @@
 
   class HandTracker {
     // onFrame(hand, timeMs) is called for every camera frame; hand is null when no hand is visible,
-    // otherwise { landmarks, world } (image coordinates 0..1 and 3D world coordinates in metres).
+    // otherwise { landmarks, world, handedness } (image coordinates 0..1, 3D world coordinates
+    // in metres, and MediaPipe's { categoryName, score } guess of which hand it is).
     constructor(video, onFrame) {
       this.video = video;
       this.onFrame = onFrame;
@@ -132,7 +133,11 @@
         const now = performance.now();
         const result = this.landmarker.detectForVideo(video, now);
         const hand = result.landmarks && result.landmarks.length
-          ? { landmarks: result.landmarks[0], world: result.worldLandmarks[0] }
+          ? {
+              landmarks: result.landmarks[0],
+              world: result.worldLandmarks[0],
+              handedness: result.handedness && result.handedness[0] && result.handedness[0][0],
+            }
           : null;
         this.onFrame(hand, now);
       }

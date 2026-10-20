@@ -235,6 +235,49 @@
     }
   }
 
+  // MediaPipe labels handedness as if the image were mirrored (selfie view). The
+  // webcam frames the game gives it are not mirrored, so its "Left" is the
+  // player's right hand. Low-confidence guesses are ignored.
+  function playerHand(handedness, minScore = 0.7) {
+    if (!handedness || handedness.score < minScore) return null;
+    if (handedness.categoryName === 'Left') return 'right';
+    if (handedness.categoryName === 'Right') return 'left';
+    return null;
+  }
+
+  // Which hand the player is using. The first confident guess is taken at once;
+  // after that the other hand has to show up for `holdMs` before it switches,
+  // so a few mislabelled frames don't move the aim area around.
+  class HandSide {
+    constructor(holdMs = 800) {
+      this.holdMs = holdMs;
+      this.reset();
+    }
+
+    reset() {
+      this.side = null;
+      this.candidate = null;
+      this.since = 0;
+    }
+
+    update(side, t) {
+      if (!side) {
+        // no confident guess this frame: tells us nothing either way
+      } else if (side === this.side) {
+        this.candidate = null;
+      } else if (!this.side) {
+        this.side = side;
+      } else if (side !== this.candidate) {
+        this.candidate = side;
+        this.since = t;
+      } else if (t - this.since >= this.holdMs) {
+        this.side = side;
+        this.candidate = null;
+      }
+      return this.side;
+    }
+  }
+
   function clamp01(v) {
     return Math.max(0, Math.min(1, v));
   }
@@ -265,6 +308,8 @@
     DwellDetector,
     OneEuroFilter,
     AimHistory,
+    HandSide,
+    playerHand,
     mapAim,
   };
 });

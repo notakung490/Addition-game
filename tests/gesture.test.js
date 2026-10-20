@@ -96,6 +96,26 @@ test('aim is mirrored and stretched from the central camera region', () => {
   assert.deepEqual(G.mapAim({ x: 1.2, y: 1.5 }, region), { x: 0, y: 1 }, 'clamped to the screen');
 });
 
+test("MediaPipe's handedness label is flipped because the webcam image is not mirrored", () => {
+  assert.equal(G.playerHand({ categoryName: 'Left', score: 0.95 }), 'right');
+  assert.equal(G.playerHand({ categoryName: 'Right', score: 0.95 }), 'left');
+  assert.equal(G.playerHand({ categoryName: 'Left', score: 0.5 }), null, 'unsure guesses are ignored');
+  assert.equal(G.playerHand(undefined), null);
+});
+
+test('hand side ignores brief mislabelled frames but follows a real hand swap', () => {
+  const side = new G.HandSide(800);
+  assert.equal(side.update(null, 0), null);
+  assert.equal(side.update('right', 33), 'right', 'first confident guess is used straight away');
+  assert.equal(side.update('left', 66), 'right');
+  assert.equal(side.update('left', 100), 'right');
+  assert.equal(side.update('right', 133), 'right', 'a short flicker is forgotten');
+  assert.equal(side.update('left', 200), 'right');
+  assert.equal(side.update(null, 600), 'right', 'no guess on a frame changes nothing');
+  assert.equal(side.update('left', 900), 'right');
+  assert.equal(side.update('left', 1100), 'left', 'the other hand for long enough switches');
+});
+
 test('one euro filter passes a constant through and smooths jitter', () => {
   const f = new G.OneEuroFilter(1, 0);
   assert.equal(f.filter(10, 0), 10);
